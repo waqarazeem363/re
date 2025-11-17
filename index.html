@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Reels Clone</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .liked .material-symbols-outlined {
+      font-variation-settings: 'FILL' 1, 'wght' 700, 'GRAD' 0, 'opsz' 24;
+    }@keyframes fade-out {
+      0% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      80% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(1.1);
+      }
+    }
+    .animate-fade-out {
+      animation: fade-out 3s ease-out forwards;
+    }
+  </style>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#ee2b8c",
+            "background-light": "#f8f6f7",
+            "background-dark": "#000000",},
+          fontFamily: {
+            "display": ["Poppins", "sans-serif"]
+          },
+          borderRadius: {
+            "DEFAULT": "1rem",
+            "lg": "2rem",
+            "xl": "3rem",
+            "full": "9999px"
+          },
+        },
+      },
+    }
+  </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    #reel-list {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    #reel-list::-webkit-scrollbar {
+      display: none;
+    }
+    .reel-slide {
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="relative mx-auto h-screen w-full max-w-md overflow-hidden">
+<div id="reel-list" class="relative h-full snap-y snap-mandatory overflow-y-scroll scroll-smooth">
+<div id="reel-loading" class="flex h-full items-center justify-center text-base font-bold text-white">Loading reels...</div>
+</div>
+</div>
+<style>
+    @keyframes marquee {
+      0% {
+        transform: translateX(100%);
+      }
+      100% {
+        transform: translateX(-100%);
+      }
+    }
+    .animate-marquee {
+      display: inline-block;
+      animation: marquee 10s linear infinite;
+    }
+  </style>
+</body>
+<script type="module">
+const API_ENDPOINT = 'https://linker.earnhs.com/api2.php';
+const reelsContainer = document.getElementById('reel-list');
+const loadingEl = document.getElementById('reel-loading');
+const REFRESH_INTERVAL_MS = 60000;
+let refreshTimer;
+
+document.addEventListener('DOMContentLoaded', init);
+
+async function init() {
+  await refreshReels();
+
+  if (REFRESH_INTERVAL_MS > 0) {
+    refreshTimer = setInterval(refreshReels, REFRESH_INTERVAL_MS);
+  }
+}
+
+function setLoadingState(message) {
+  if (loadingEl && loadingEl.isConnected) {
+    loadingEl.textContent = message;
+  } else if (reelsContainer && !reelsContainer.children.length) {
+    const placeholder = document.createElement('div');
+    placeholder.className =
+      'flex h-full items-center justify-center text-base font-bold text-white bg-black/40 backdrop-blur-sm';
+    placeholder.textContent = message;
+    reelsContainer.appendChild(placeholder);
+  }
+}
+
+async function refreshReels() {
+  const data = await loadReels();
+
+  if (!data.length) {
+    if (!reelsContainer?.children.length) {
+      setLoadingState('Unable to load reels right now.');
+    }
+    return;
+  }
+
+  renderReels(data);
+}
+
+async function loadReels() {
+  try {
+    const response = await fetch(API_ENDPOINT, { cache: 'no-store' });
+
+    if (!response.ok) {
+      throw new Error(`Request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const payload = await response.json();
+    if (!payload || !Array.isArray(payload.data)) {
+      return [];
+    }
+
+    return payload.data.slice(0, 20);
+  } catch (error) {
+    console.error('Unable to load reels', error);
+    return [];
+  }
+}
+
+function renderReels(items) {
+  if (!reelsContainer) return;
+
+  reelsContainer.innerHTML = '';
+  items.forEach((shorty, index) => {
+    reelsContainer.appendChild(createReelSlide(shorty, index));
+  });
+}
+
+function createReelSlide(shorty, index) {
+  const safeUrl = escapeHtmlAttribute(shorty.imageUrl);
+  const safeTitle = escapeHtml(shorty.title || 'Untitled Reel');
+  const safeAuthor = escapeHtml(shorty.author || 'Unknown Creator');
+  const safeAudio = escapeHtml(shorty.audioTitle || shorty.title || 'Original Audio');
+  const stats = generateStats();
+  const authorAvatar = escapeHtmlAttribute(getAuthorAvatar(shorty, index));
+  const audioAvatar = escapeHtmlAttribute(getAudioAvatar(shorty, index));
+  const targetUrl = "https://google.com"
+
+  const slide = document.createElement('section');
+  slide.className = 'reel-slide relative flex h-full min-h-full snap-start flex-col overflow-hidden cursor-pointer';
+  slide.innerHTML = `
+    <div class="absolute inset-0 h-full w-full">
+      <div class="h-full w-full bg-cover bg-center" style="background-image: url(&quot;${safeUrl}&quot;);"></div>
+    </div>
+    <div class="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+      <div class="flex h-20 w-20 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm">
+        <span class="material-symbols-outlined text-white" style="font-size: 48px; font-variation-settings: 'FILL' 1;">play_arrow</span>
+      </div>
+    </div>
+    <div class="absolute top-0 left-0 h-28 w-full bg-gradient-to-b from-black/60 to-transparent"></div>
+    <div class="absolute bottom-0 left-0 h-40 w-full bg-gradient-to-t from-black/60 to-transparent"></div>
+    <div class="relative z-10 flex h-full w-full flex-col">
+      <header class="flex items-center justify-between p-4 pb-2">
+        <h2 class="text-white text-lg font-bold leading-tight tracking-[-0.015em]">Reels</h2>
+        <button class="flex h-12 min-w-0 cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full bg-transparent p-0 text-base font-bold leading-normal tracking-[0.015em] text-white" aria-label="Open camera">
+          <span class="material-symbols-outlined text-white" style="font-size: 28px;">photo_camera</span>
+        </button>
+      </header>
+      <main class="flex-1"></main>
+      <footer class="flex items-end p-4">
+        <div class="flex flex-1 flex-col gap-2">
+          <div class="flex items-center gap-3">
+            <div class="h-10 w-10 min-w-10 rounded-full bg-cover bg-center" style="background-image: url(&quot;${authorAvatar}&quot;);"></div>
+            <p class="text-base font-bold leading-tight tracking-[-0.015em] text-white">${safeAuthor}</p>
+            <button class="rounded-lg border border-white/50 px-3 py-1 text-sm font-bold text-white">Follow</button>
+          </div>
+          <p class="text-base font-normal leading-normal text-white">${safeTitle}</p>
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-white" style="font-size: 16px;">music_note</span>
+            <p class="flex-1 whitespace-nowrap text-base font-normal leading-normal text-white animate-marquee">Original Audio - ${safeAudio}</p>
+          </div>
+        </div>
+        <div class="h-12 w-12 rounded-full border-2 border-white/30 bg-cover bg-center" style="background-image: url(&quot;${authorAvatar}&quot;);"></div>
+      </footer>
+    </div>
+    <div class="pointer-events-none absolute bottom-28 right-4 z-20 flex flex-col items-center gap-4">
+      <div class="liked flex flex-col items-center justify-center gap-1 py-1 text-[#FF3040]">
+        <span class="material-symbols-outlined" style="font-size: 28px;">favorite</span>
+        <p class="text-sm font-bold leading-normal tracking-[0.015em] text-white">${stats.likes}</p>
+      </div>
+      <div class="flex flex-col items-center justify-center gap-1 py-1">
+        <span class="material-symbols-outlined text-white" style="font-size: 28px;">chat_bubble</span>
+        <p class="text-sm font-bold leading-normal tracking-[0.015em] text-white">${stats.comments}</p>
+      </div>
+      <div class="flex flex-col items-center justify-center gap-1 py-1">
+        <span class="material-symbols-outlined text-white" style="font-size: 28px;">send</span>
+        <p class="text-sm font-bold leading-normal tracking-[0.015em] text-white">${stats.shares}</p>
+      </div>
+      <div class="flex flex-col items-center justify-center gap-1 py-1">
+        <span class="material-symbols-outlined text-white" style="font-size: 28px;">bookmark</span>
+        <p class="text-sm font-bold leading-normal tracking-[0.015em] text-white">${stats.saves}</p>
+      </div>
+      <div class="flex flex-col items-center justify-center gap-1 py-1">
+        <span class="material-symbols-outlined text-white" style="font-size: 28px;">more_horiz</span>
+      </div>
+    </div>
+    <div class="pointer-events-none absolute bottom-6 right-6 z-20 flex h-10 w-10 items-center justify-center rounded-full border-2 border-white/30 bg-cover bg-center shadow-lg shadow-black/40" style="background-image: url(&quot;${audioAvatar}&quot;);"></div>
+    
+  `;
+  if (targetUrl) {
+    slide.addEventListener('click', () => {
+      window.open(targetUrl, '_blank', 'noopener');
+    });
+  }
+
+  return slide;
+}
+
+function generateStats() {
+  return {
+    likes: formatCount(randomInt(5_000, 150_000)),
+    comments: formatCount(randomInt(50, 2500)),
+    shares: formatCount(randomInt(100, 5000)),
+    saves: formatCount(randomInt(75, 3200)),
+  };
+}
+
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function formatCount(value) {
+  if (value >= 1000) {
+    const formatted = (value / 1000).toFixed(value >= 10000 ? 0 : 1);
+    return `${formatted}k`;
+  }
+  return String(value);
+}
+
+function escapeHtmlAttribute(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/'/g, '&#39;');
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function getAuthorAvatar(shorty, index) {
+  if (shorty.avatar) {
+    return shorty.avatar;
+  }
+
+  if (shorty.meta && shorty.meta.avatar) {
+    return shorty.meta.avatar;
+  }
+
+  return generatePlaceholderAvatar(shorty.author || 'creator', index);
+}
+
+function getAudioAvatar(shorty, index) {
+  if (shorty.audioAvatar) {
+    return shorty.audioAvatar;
+  }
+
+  return getAuthorAvatar(shorty, index + 1);
+}
+
+function generatePlaceholderAvatar(name, index) {
+  const seed = encodeURIComponent(`${name}-${index}`);
+  return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=ee2b8c,111827&radius=50`;
+}
+
+</script>
+</html>
